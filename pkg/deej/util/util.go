@@ -87,6 +87,7 @@ func SignificantlyDifferent(old float32, new float32, noiseReductionLevel string
 	const (
 		noiseReductionHigh = "high"
 		noiseReductionLow  = "low"
+		noiseReductionOff  = "off"
 	)
 
 	// this threshold is solely responsible for dealing with hardware interference when
@@ -101,6 +102,9 @@ func SignificantlyDifferent(old float32, new float32, noiseReductionLevel string
 		break
 	case noiseReductionLow:
 		significantDifferenceThreshold = 0.015
+		break
+	case noiseReductionOff:
+		significantDifferenceThreshold = 0.000
 		break
 	default:
 		significantDifferenceThreshold = 0.025
