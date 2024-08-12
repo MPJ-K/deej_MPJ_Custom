@@ -9,12 +9,15 @@
 #define POT_ANALOG_PINS \
   { A0, A1, A2, A3, A6 }
 
+// Specify the serial BAUD rate.
+#define BAUD 115200
+
 // Specify the ADC resolution.
 #define ADC_MAX 1023
 
 // Specify the maximum distance from the top and bottom of the potentiometer range where the measured value will snap to its limits.
-#define TOP_EDGE_SNAP_RANGE 1
-#define BOTTOM_EDGE_SNAP_RANGE 1
+#define TOP_EDGE_SNAP_RANGE 0
+#define BOTTOM_EDGE_SNAP_RANGE 0
 
 // Set the potentiometer measurement interval in milliseconds.
 #define SAMPLING_INTERVAL 48
@@ -39,10 +42,10 @@ const int POT_PINS[NUM_POTS] = POT_ANALOG_PINS;
 
 // The current potentiometer values.
 int pot_values[NUM_POTS] = { 0 };
+// The current potentiometer values scaled by a factor of 100.
+long pot_values_scaled[NUM_POTS] = { 0 };
 // The current potentiometer values expressed as a percentage of the maximum.
 int pot_percentages[NUM_POTS] = { 0 };
-// The current potentiometer values expressed as a percentage of the maximum, then multiplied by the maximum.
-long pot_percentages_scaled[NUM_POTS] = { 0 };
 // The potentiometer values obtained during the most recent sample.
 int new_pot_values[NUM_POTS];
 
@@ -84,6 +87,9 @@ void throw_error(const __FlashStringHelper* message) {
 
 
 void sample_pots() {
+  // Do a dummy analogRead() to prevent stabilization issues after waking from sleep.
+  analogRead(POT_PINS[0]);
+
   for (int i = 0; i < NUM_POTS; i++) {
     new_pot_values[i] = analogRead(POT_PINS[i]);
   }
@@ -100,7 +106,7 @@ bool parse_new_samples() {
       new_percentage = 100;
     } else if (new_pot_values[i] - BOTTOM_EDGE_SNAP_RANGE <= 0) {
       new_percentage = 0;
-    } else if (abs(pot_percentages_scaled[i] - 100L * new_pot_values[i]) >= ADC_MAX) {
+    } else if (abs(pot_values_scaled[i] - 100L * new_pot_values[i]) >= ADC_MAX) {
       // To avoid floating point operations, the potentiometer values are scaled by a factor of 100.
       // Integer arithmetic is used to replace the following floating point arithmetic: percentage = round(100 * value / ADC_MAX).
       new_percentage = (100L * new_pot_values[i] + (ADC_MAX / 2)) / ADC_MAX;
@@ -108,8 +114,8 @@ bool parse_new_samples() {
 
     if (new_percentage != pot_percentages[i]) {
       pot_percentages[i] = new_percentage;
-      pot_percentages_scaled[i] = (long)pot_percentages[i] * ADC_MAX;
-      pot_values[i] = pot_percentages_scaled[i] / 100;
+      pot_values_scaled[i] = (long)pot_percentages[i] * ADC_MAX;
+      pot_values[i] = pot_values_scaled[i] / 100;
       any_value_changed = true;
       most_recently_changed_pot = i;
     }
@@ -166,13 +172,14 @@ ISR(TIMER2_COMPA_vect) {
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(BAUD);
 
-  // Set the appropriate pin modes.
   pinMode(LED_BUILTIN, OUTPUT);
 
   for (int i = 0; i < NUM_POTS; i++) {
     pinMode(POT_PINS[i], INPUT);
+    // Take some void analogRead() measurements to 'warm up' the ADC.
+    analogRead(POT_PINS[i]);
   }
 
   // Initialize the SSD1306 display.
