@@ -78,16 +78,16 @@ func OpenExternal(logger *zap.SugaredLogger, cmd string, arg string) error {
 // NormalizeScalar "trims" the given float32 to 2 points of precision (e.g. 0.15442 -> 0.15)
 // This is used both for windows core audio volume levels and for cleaning up slider level values from serial
 func NormalizeScalar(v float32) float32 {
-	return float32(math.Floor(float64(v)*100) / 100.0)
+	return float32(math.Round(float64(v)*100) / 100.0)
 }
 
 // SignificantlyDifferent returns true if there's a significant enough volume difference between two given values
 func SignificantlyDifferent(old float32, new float32, noiseReductionLevel string) bool {
 
 	const (
-		noiseReductionHigh = "high"
-		noiseReductionLow  = "low"
-		noiseReductionOff  = "off"
+		noiseReductionHigh    = "high"
+		noiseReductionLow     = "low"
+		noiseReductionMinimal = "minimal"
 	)
 
 	// this threshold is solely responsible for dealing with hardware interference when
@@ -103,8 +103,8 @@ func SignificantlyDifferent(old float32, new float32, noiseReductionLevel string
 	case noiseReductionLow:
 		significantDifferenceThreshold = 0.015
 		break
-	case noiseReductionOff:
-		significantDifferenceThreshold = 0.000
+	case noiseReductionMinimal:
+		significantDifferenceThreshold = 0.005
 		break
 	default:
 		significantDifferenceThreshold = 0.025
